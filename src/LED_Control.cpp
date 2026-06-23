@@ -16,12 +16,14 @@ void LED_Control::begin(uint8_t pin[LED_NUM_LEDS])
 }
 
 void LED_Control::on(LedName name) {
+    if(_leds[name].mode == MODE_ON) return;
     _leds[name].mode = MODE_ON;
     _leds[name].currentLevel = HIGH;
     digitalWrite(_leds[name].pin, HIGH);
 }
 
 void LED_Control::off(LedName name) {
+    if(_leds[name].mode == MODE_OFF) return;
     _leds[name].mode = MODE_OFF;
     _leds[name].currentLevel = LOW;
     digitalWrite(_leds[name].pin, LOW);

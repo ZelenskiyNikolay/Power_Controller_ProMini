@@ -28,8 +28,8 @@ private:
     bool compliteCharge = false;
 
     bool dc1_state = false;
-    bool dc2_state = false;
-    bool dc3_state = false;
+    bool dc2_state = true;
+    bool dc3_state = true;
     bool dc4_state = true;
 
     // переменные антидребезга

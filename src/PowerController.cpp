@@ -21,10 +21,10 @@ void PowerController::begin()
 
     I2CSlave::getInstance().writeRegister(I2CSlave::REG_BAT_LEVEL, 100);
     I2CSlave::getInstance().writeRegister(I2CSlave::REG_SYS_CONTROL, 0x02);
-    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 1, false);//on Pico
-    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 2, false);
-    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 3, false);
-    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 4, false);
+    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 1, false); // on Pico
+    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 2, true);
+    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 3, true);
+    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 4, true);
 
     LED_Control::getInstance().begin();
     LED_Control::getInstance().blink(LED_DIGITAL_PWR, 1000, 200);
@@ -32,7 +32,7 @@ void PowerController::begin()
     LED_Control::getInstance().onForTime(LED_CHARGE, 1500);
     LED_Control::getInstance().onForTime(LED_FULL, 1000);
 
-    digitalWrite(DC_PICO_EN_PIN, HIGH); // вырубаем все потребители..
+    digitalWrite(DC_PICO_EN_PIN, LOW); // Вкл Пико..  вырубаем все потребители..
     digitalWrite(DC_SENSOR_EN_PIN, HIGH);
     digitalWrite(DC_SOUND_EN_PIN, HIGH);
     digitalWrite(DC_MOVE_EN_PIN, HIGH);
@@ -178,7 +178,7 @@ void PowerController::Show_Bt_Level()
 }
 void PowerController::Update(unsigned long dt)
 {
-    if(charge)
+    if (charge)
     {
         if (voltmeter.getVoltage() > 4.3f)
             voltmeter.ch_update(false);
@@ -189,18 +189,20 @@ void PowerController::Update(unsigned long dt)
     LED_Control::getInstance().update(dt);
     sound.Update(dt);
 
+    if (I2CSlave::getInstance().getBit(I2CSlave::REG_SYS_CONTROL, 1))
+    {
+        sound.playEffect(Sound::FX_SHUTDOWN);
+        while (sound.IsBusy())
+        {
+            float dt1 = getDeltaTime();
+            sound.Update(dt1);
+        }
+        SleepMetod();
+    }
+
     timer -= dt;
     if (!in_power)
     {
-
-        timer2 -= dt;
-        if (timer2 < 0)
-        {
-            if (I2CSlave::getInstance().getBit(I2CSlave::REG_SYS_CONTROL, 1))
-                SleepMetod();
-
-            timer2 = TIMEOUT;
-        }
         if (!bt_debounce)
             if (!digitalRead(BUTTON_PIN))
             {
@@ -302,8 +304,11 @@ void PowerController::SleepMetod()
 
     LED_Control::getInstance().off(LED_BOARD);
 
-    I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 1, false);
-    digitalWrite(DC_PICO_EN_PIN, dc1_state);//возвращаем состояние досна 
+    if (!dc1_state)
+        digitalWrite(DC_PICO_EN_PIN, dc1_state); // возвращаем состояние до сна
+    else
+        I2CSlave::getInstance().setBit(I2CSlave::REG_SYS_CONTROL, 1, false); // on Pico
+
     Serial.println("Доброе утро! Я проснулся!");
 
     sound.playEffect(Sound::FX_WELCOME);
